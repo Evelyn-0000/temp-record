@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>冷凍冷藏溫度記錄表</title>
+
+<style>
+body {
+  font-family: sans-serif;
+  padding:20px;
+  background:#f5f5f5;
+}
+
+.card {
+  background:white;
+  padding:20px;
+  border-radius:12px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.1);
+}
+
+input {
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  border-radius:8px;
+  border:1px solid #ccc;
+  font-size:16px;
+}
+
+button {
+  width:100%;
+  padding:12px;
+  margin-top:15px;
+  background:#4CAF50;
+  color:white;
+  border:none;
+  border-radius:8px;
+}
+
+button:active {
+  transform: scale(0.96);
+}
+
+button.loading {
+  background:#999;
+}
+
+#msg {
+  margin-top:15px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+  <h2 id="title">設備記錄</h2>
+
+  <input id="temp" placeholder="請輸入溫度">
+  <input id="name" placeholder="請輸入姓名">
+  <input id="remark" placeholder="備註（可不填）">
+
+  <button id="submitBtn" onclick="send()">送出</button>
+
+  <p id="msg"></p>
+</div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbwXprzk1kZ02nJASUwLn9s1mHhEk2jc6BM2JloACKmP5JpNxuRRf5gWdiBUo1JMtmHEzQ/exec";
+
+// 取得網址中的 device
+function getDeviceFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("device");
+}
+
+// 顯示設備名稱
+const device = getDeviceFromURL();
+if(device){
+  document.getElementById("title").innerText = device + " 溫度記錄";
+}else{
+  document.getElementById("title").innerText = "⚠️ 未指定設備";
+}
+
+function send(){
+  const btn = document.getElementById("submitBtn");
+  const msg = document.getElementById("msg");
+
+  const temp = document.getElementById("temp").value.trim();
+  const name = document.getElementById("name").value.trim();
+  const remark = document.getElementById("remark").value.trim();
+
+  if(!device){
+    msg.innerText = "❌ 找不到設備";
+    return;
+  }
+
+  if(!temp){
+    msg.innerText = "⚠️ 請輸入溫度";
+    return;
+  }
+
+  if(!name){
+    msg.innerText = "⚠️ 請輸入姓名";
+    return;
+  }
+
+  btn.disabled = true;
+  btn.classList.add("loading");
+  btn.innerText = "送出中...";
+  msg.innerText = "";
+
+  fetch(API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ temp, name, remark, device })
+  })
+  .then(res => res.text())
+  .then(data => {
+    if(data.includes("Error")){
+      msg.innerText = "❌ " + data;
+    }else{
+      msg.innerText = "✅ 已寫入";
+    }
+
+    document.getElementById("temp").value = "";
+    document.getElementById("name").value = "";
+    document.getElementById("remark").value = "";
+  })
+  .catch(err => {
+    msg.innerText = "❌ 寫入失敗";
+  })
+  .finally(() => {
+    btn.disabled = false;
+    btn.classList.remove("loading");
+    btn.innerText = "送出";
+  });
+}
+</script>
+
+</body>
+</html>
