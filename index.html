@@ -19,9 +19,7 @@ body {
   box-shadow:0 4px 10px rgba(0,0,0,0.1);
 }
 
-h2 {
-  margin-top:0;
-}
+h2 { margin-top:0; }
 
 input {
   width:100%;
@@ -30,6 +28,12 @@ input {
   border-radius:8px;
   border:1px solid #ccc;
   font-size:16px;
+}
+
+/* 🔴 異常紅框 */
+input.warning {
+  border:2px solid red;
+  background:#fff5f5;
 }
 
 button {
@@ -50,6 +54,12 @@ button:active {
 #msg {
   margin-top:15px;
 }
+
+.warning-text {
+  color:red;
+  font-weight:bold;
+  margin-top:10px;
+}
 </style>
 </head>
 
@@ -58,7 +68,9 @@ button:active {
 <div class="card">
   <h2 id="title">設備記錄</h2>
 
-  <input id="temp" placeholder="請輸入溫度">
+  <input id="temp" type="number" step="0.1" placeholder="請輸入溫度">
+  <div id="alert" class="warning-text"></div>
+
   <input id="name" placeholder="請輸入姓名">
   <input id="remark" placeholder="備註(若有異常請填寫原因)">
 
@@ -69,33 +81,57 @@ button:active {
 
 <script>
 
-// 🔴 換成你的 Apps Script URL
-const API_URL = "https://script.google.com/macros/s/AKfycbxQNlh9wfaRPQtkbcaLK0mFgBypX6cgSAMmvZ-B98CD7K-zeYnya1_4Dv8rixW7te9xTA/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbyYSn83uqtxM08R3qIOH7RINUDGAdctB1a2d31_qGFS2XHlTkIvyyER_jgu4Bo5UMz96g/exec";
 
-// 取得設備名稱
+// 取得設備
 function getDevice(){
-  const params = new URLSearchParams(window.location.search);
-  return params.get("device");
+  return new URLSearchParams(window.location.search).get("device");
 }
+
+const device = getDevice();
+const tempInput = document.getElementById("temp");
+const alertBox = document.getElementById("alert");
 
 // 顯示標題
-const device = getDevice();
-if(device){
-  document.getElementById("title").innerText = device + " 溫度記錄";
-}else{
-  document.getElementById("title").innerText = "⚠️ 未指定設備";
-}
+document.getElementById("title").innerText =
+  device ? device + " 溫度記錄" : "⚠️ 未指定設備";
+
+
+// 🔥 異常判斷
+tempInput.addEventListener("input", () => {
+  const temp = parseFloat(tempInput.value);
+
+  if(isNaN(temp)){
+    alertBox.innerText = "";
+    tempInput.classList.remove("warning");
+    return;
+  }
+
+  // 冷藏 > 7
+  if(device.includes("冷藏") && temp > 7){
+    alertBox.innerText = "⚠️ 溫度過高（冷藏應 ≤ 7°C）";
+    tempInput.classList.add("warning");
+  }
+  // 冷凍 > -18
+  else if(device.includes("冷凍") && temp > -18){
+    alertBox.innerText = "⚠️ 溫度過高（冷凍應 ≤ -18°C）";
+    tempInput.classList.add("warning");
+  }
+  else{
+    alertBox.innerText = "";
+    tempInput.classList.remove("warning");
+  }
+});
+
 
 function send(){
 
   const btn = document.getElementById("submitBtn");
   const msg = document.getElementById("msg");
 
-  const temp = document.getElementById("temp").value.trim();
+  const temp = tempInput.value.trim();
   const name = document.getElementById("name").value.trim();
   const remark = document.getElementById("remark").value.trim();
-
-  const device = getDevice();
 
   if(!device){
     msg.innerText = "❌ 沒有設備參數";
@@ -112,14 +148,26 @@ function send(){
     return;
   }
 
+  // 🔴 異常強制填備註
+  const t = parseFloat(temp);
+  if(
+    (device.includes("冷藏") && t > 7) ||
+    (device.includes("冷凍") && t > -18)
+  ){
+    if(!remark){
+      msg.innerText = "⚠️ 異常請填寫備註";
+      return;
+    }
+  }
+
   btn.disabled = true;
   btn.innerText = "送出中...";
   msg.innerText = "";
 
-  // 🔥 重點：不用 JSON、不用 header（避免 CORS）
   fetch(API_URL, {
     method: "POST",
     body: new URLSearchParams({
+      action: "write",
       temp: temp,
       name: name,
       remark: remark,
@@ -129,9 +177,10 @@ function send(){
   .then(() => {
     msg.innerText = "✅ 已送出";
 
-    document.getElementById("temp").value = "";
+    tempInput.value = "";
     document.getElementById("name").value = "";
     document.getElementById("remark").value = "";
+    alertBox.innerText = "";
   })
   .catch(() => {
     msg.innerText = "❌ 寫入失敗";
