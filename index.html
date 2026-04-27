@@ -112,27 +112,24 @@ function send(){
   msg.innerText = "";
 
   fetch(API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ temp, name, remark, device })
+  method: "POST",
+  body: new URLSearchParams({
+    temp: temp,
+    name: name,
+    remark: remark,
+    device: device
   })
-  .then(res => res.text())
-  .then(data => {
-    if(data.includes("Error")){
-      msg.innerText = "❌ " + data;
-    }else{
-      msg.innerText = "✅ 已寫入";
-    }
+})
+.then(() => {
+  msg.innerText = "✅ 已送出";
 
-    document.getElementById("temp").value = "";
-    document.getElementById("name").value = "";
-    document.getElementById("remark").value = "";
-  })
-  .catch(err => {
-    msg.innerText = "❌ 寫入失敗";
-  })
+  document.getElementById("temp").value = "";
+  document.getElementById("name").value = "";
+  document.getElementById("remark").value = "";
+})
+.catch(() => {
+  msg.innerText = "❌ 寫入失敗";
+});
   .finally(() => {
     btn.disabled = false;
     btn.classList.remove("loading");
