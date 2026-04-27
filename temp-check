@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>溫度複核</title>
+
+<style>
+body { font-family: sans-serif; padding:20px; background:#f5f5f5;}
+.card { background:white; padding:20px; border-radius:10px;}
+.item { border-bottom:1px solid #eee; padding:10px 0;}
+button { margin-top:10px; width:100%; padding:10px; background:#4CAF50; color:white;}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+  <h2 id="title">複核頁面</h2>
+
+  <div id="list"></div>
+
+  <input id="checker" placeholder="請輸入複核者姓名">
+
+  <button onclick="submitCheck()">確認複核</button>
+
+  <p id="msg"></p>
+</div>
+
+<script>
+
+const API = "https://script.google.com/macros/s/AKfycbyYSn83uqtxM08R3qIOH7RINUDGAdctB1a2d31_qGFS2XHlTkIvyyER_jgu4Bo5UMz96g/exec";
+
+function getDevice(){
+  const p = new URLSearchParams(location.search);
+  return p.get("device");
+}
+
+const device = getDevice();
+document.getElementById("title").innerText = device + " 複核";
+
+let rows = [];
+
+// 讀資料
+fetch(API + "?device=" + device)
+.then(res => res.json())
+.then(data => {
+  rows = data;
+
+  let html = "";
+
+  data.forEach(r => {
+    html += `
+      <div class="item">
+        📅 ${r.date} ⏰ ${r.time}<br>
+        🌡 ${r.temp}°C ｜ 👤 ${r.name}<br>
+        📝 ${r.remark || "-"}<br>
+        ✅ 複核：${r.checker || "未複核"}
+      </div>
+    `;
+  });
+
+  document.getElementById("list").innerHTML = html;
+});
+
+
+// 送出複核
+function submitCheck(){
+
+  const checker = document.getElementById("checker").value;
+
+  if(!checker){
+    alert("請輸入複核者");
+    return;
+  }
+
+  rows.forEach(r => {
+
+    fetch(API, {
+      method: "POST",
+      body: new URLSearchParams({
+        device: device,
+        row: r.row,
+        checker: checker
+      })
+    });
+
+  });
+
+  document.getElementById("msg").innerText = "✅ 複核完成";
+}
+
+</script>
+
+</body>
+</html>
