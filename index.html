@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>冷凍冷藏溫度記錄表</title>
+<title>溫度記錄</title>
 
 <style>
 body {
@@ -17,6 +17,10 @@ body {
   padding:20px;
   border-radius:12px;
   box-shadow:0 4px 10px rgba(0,0,0,0.1);
+}
+
+h2 {
+  margin-top:0;
 }
 
 input {
@@ -36,14 +40,11 @@ button {
   color:white;
   border:none;
   border-radius:8px;
+  font-size:16px;
 }
 
 button:active {
   transform: scale(0.96);
-}
-
-button.loading {
-  background:#999;
 }
 
 #msg {
@@ -67,16 +68,18 @@ button.loading {
 </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbzPGUR_Fn-D9g8Sy0aNw0l2CDgQRJK4ze7Ui013e8dOIB7YXzv3YUhzRqeOo4KF0nPQvw/exec";
 
-// 取得網址中的 device
-function getDeviceFromURL() {
+// 🔴 換成你的 Apps Script URL
+const API_URL = "https://script.google.com/macros/s/你的ID/exec";
+
+// 取得設備名稱
+function getDevice(){
   const params = new URLSearchParams(window.location.search);
   return params.get("device");
 }
 
-// 顯示設備名稱
-const device = getDeviceFromURL();
+// 顯示標題
+const device = getDevice();
 if(device){
   document.getElementById("title").innerText = device + " 溫度記錄";
 }else{
@@ -84,6 +87,7 @@ if(device){
 }
 
 function send(){
+
   const btn = document.getElementById("submitBtn");
   const msg = document.getElementById("msg");
 
@@ -91,8 +95,10 @@ function send(){
   const name = document.getElementById("name").value.trim();
   const remark = document.getElementById("remark").value.trim();
 
+  const device = getDevice();
+
   if(!device){
-    msg.innerText = "❌ 找不到設備";
+    msg.innerText = "❌ 沒有設備參數";
     return;
   }
 
@@ -107,35 +113,35 @@ function send(){
   }
 
   btn.disabled = true;
-  btn.classList.add("loading");
   btn.innerText = "送出中...";
   msg.innerText = "";
 
+  // 🔥 重點：不用 JSON、不用 header（避免 CORS）
   fetch(API_URL, {
-  method: "POST",
-  body: new URLSearchParams({
-    temp: temp,
-    name: name,
-    remark: remark,
-    device: device
+    method: "POST",
+    body: new URLSearchParams({
+      temp: temp,
+      name: name,
+      remark: remark,
+      device: device
+    })
   })
-})
-.then(() => {
-  msg.innerText = "✅ 已送出";
+  .then(() => {
+    msg.innerText = "✅ 已送出";
 
-  document.getElementById("temp").value = "";
-  document.getElementById("name").value = "";
-  document.getElementById("remark").value = "";
-})
-.catch(() => {
-  msg.innerText = "❌ 寫入失敗";
-});
+    document.getElementById("temp").value = "";
+    document.getElementById("name").value = "";
+    document.getElementById("remark").value = "";
+  })
+  .catch(() => {
+    msg.innerText = "❌ 寫入失敗";
+  })
   .finally(() => {
     btn.disabled = false;
-    btn.classList.remove("loading");
     btn.innerText = "送出";
   });
 }
+
 </script>
 
 </body>
