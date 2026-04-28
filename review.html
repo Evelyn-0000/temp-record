@@ -3,25 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>溫度複核</title>
+<title>複核頁</title>
 
 <style>
 body { font-family: sans-serif; padding:20px; background:#f5f5f5;}
-.card { background:white; padding:20px; border-radius:10px;}
-.item { border-bottom:1px solid #eee; padding:10px 0;}
-button { margin-top:10px; width:100%; padding:10px; background:#4CAF50; color:white;}
+.card { background:white; padding:20px; border-radius:12px;}
+table { width:100%; border-collapse: collapse; margin-top:10px;}
+td, th { border:1px solid #ccc; padding:8px; text-align:center;}
+button { width:100%; padding:12px; margin-top:10px; background:#4CAF50; color:white; border:none;}
 </style>
 </head>
 
 <body>
 
 <div class="card">
-  <h2 id="title">複核頁面</h2>
+  <h2 id="title"></h2>
 
-  <div id="list"></div>
+  <div id="tableArea">載入中...</div>
 
   <input id="checker" placeholder="請輸入複核者姓名">
-
   <button onclick="submitCheck()">確認複核</button>
 
   <p id="msg"></p>
@@ -31,9 +31,9 @@ button { margin-top:10px; width:100%; padding:10px; background:#4CAF50; color:wh
 
 const API = "https://script.google.com/macros/s/AKfycby5-MXl1FN3Pb3CXeLbuPsgtpj-jlowYfRfzUQjIroC_kCBOGA4ml_J-3CDHe-oA2SHwA/exec";
 
+// 取得設備
 function getDevice(){
-  const p = new URLSearchParams(location.search);
-  return p.get("device");
+  return new URLSearchParams(location.search).get("device");
 }
 
 const device = getDevice();
@@ -41,51 +41,63 @@ document.getElementById("title").innerText = device + " 複核";
 
 let rows = [];
 
-// 讀資料
-fetch(API + "?device=" + device)
+// 🔥 讀取資料
+fetch(API + "?action=get&device=" + device)
 .then(res => res.json())
 .then(data => {
+
   rows = data;
 
-  let html = "";
+  if(data.length === 0){
+    document.getElementById("tableArea").innerText = "⚠️ 沒有資料";
+    return;
+  }
 
-  data.forEach(r => {
-    html += `
-      <div class="item">
-        📅 ${r.date} ⏰ ${r.time}<br>
-        🌡 ${r.temp}°C ｜ 👤 ${r.name}<br>
-        📝 ${r.remark || "-"}<br>
-        ✅ 複核：${r.checker || "未複核"}
-      </div>
-    `;
+  let html = "<table><tr><th>日期</th><th>時間</th><th>溫度</th><th>人員</th><th>備註</th></tr>";
+
+  data.forEach(d => {
+
+    // 🔥 修正時間格式
+    let time = new Date(d.time);
+    let t = time.getHours().toString().padStart(2,'0') + ":" +
+            time.getMinutes().toString().padStart(2,'0');
+
+    html += `<tr>
+      <td>${d.date}</td>
+      <td>${t}</td>
+      <td>${d.temp}</td>
+      <td>${d.name}</td>
+      <td>${d.remark || ""}</td>
+    </tr>`;
   });
 
-  document.getElementById("list").innerHTML = html;
+  html += "</table>";
+
+  document.getElementById("tableArea").innerHTML = html;
 });
 
 
-// 送出複核
-function submitCheck(){
+// 🔥 複核送出
+async function submitCheck(){
 
   const checker = document.getElementById("checker").value;
 
   if(!checker){
-    alert("請輸入複核者");
+    alert("請輸入姓名");
     return;
   }
 
-  rows.forEach(r => {
-
-    fetch(API, {
+  for (const r of rows) {
+    await fetch(API, {
       method: "POST",
       body: new URLSearchParams({
+        action: "check",
         device: device,
         row: r.row,
         checker: checker
       })
     });
-
-  });
+  }
 
   document.getElementById("msg").innerText = "✅ 複核完成";
 }
