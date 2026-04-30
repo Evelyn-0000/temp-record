@@ -45,10 +45,19 @@ button {
   border:none;
   border-radius:8px;
   font-size:16px;
+  transition:0.2s;
 }
 
 button:active {
   transform: scale(0.96);
+}
+
+button.loading {
+  background:#999;
+}
+
+button:disabled {
+  opacity:0.6;
 }
 
 #msg {
@@ -81,7 +90,7 @@ button:active {
 
 <script>
 
-const API_URL = "https://script.google.com/macros/s/AKfycby5-MXl1FN3Pb3CXeLbuPsgtpj-jlowYfRfzUQjIroC_kCBOGA4ml_J-3CDHe-oA2SHwA/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzG-rsW9enCg1uOJwCardM9xyUQS2QbIUwEXj4ylV_D-xhKupgSpWmEstwo5lQsUHTBgg/exec";
 
 // 取得設備
 function getDevice(){
@@ -92,13 +101,14 @@ const device = getDevice();
 const tempInput = document.getElementById("temp");
 const alertBox = document.getElementById("alert");
 
-// 顯示標題
+// 標題
 document.getElementById("title").innerText =
   device ? device + " 溫度記錄" : "⚠️ 未指定設備";
 
 
 // 🔥 異常判斷
 tempInput.addEventListener("input", () => {
+
   const temp = parseFloat(tempInput.value);
 
   if(isNaN(temp)){
@@ -107,12 +117,10 @@ tempInput.addEventListener("input", () => {
     return;
   }
 
-  // 冷藏 > 7
   if(device.includes("冷藏") && temp > 7){
     alertBox.innerText = "⚠️ 溫度過高（冷藏應 ≤ 7°C）";
     tempInput.classList.add("warning");
   }
-  // 冷凍 > -18
   else if(device.includes("冷凍") && temp > -18){
     alertBox.innerText = "⚠️ 溫度過高（冷凍應 ≤ -18°C）";
     tempInput.classList.add("warning");
@@ -124,6 +132,7 @@ tempInput.addEventListener("input", () => {
 });
 
 
+// 🔥 送出
 function send(){
 
   const btn = document.getElementById("submitBtn");
@@ -148,7 +157,7 @@ function send(){
     return;
   }
 
-  // 🔴 異常強制填備註
+  // 🔴 異常強制備註
   const t = parseFloat(temp);
   if(
     (device.includes("冷藏") && t > 7) ||
@@ -160,7 +169,9 @@ function send(){
     }
   }
 
+  // UI 狀態
   btn.disabled = true;
+  btn.classList.add("loading");
   btn.innerText = "送出中...";
   msg.innerText = "";
 
@@ -175,18 +186,19 @@ function send(){
     })
   })
   .then(() => {
-    msg.innerText = "✅ 已送出";
 
-    tempInput.value = "";
-    document.getElementById("name").value = "";
-    document.getElementById("remark").value = "";
-    alertBox.innerText = "";
+    // ✅ 完成畫面（取代關閉）
+    document.body.innerHTML = `
+      <div style="text-align:center;padding:40px;">
+        <h2>✅ 已送出</h2>
+        <p>可直接關閉此頁面</p>
+      </div>
+    `;
   })
   .catch(() => {
     msg.innerText = "❌ 寫入失敗";
-  })
-  .finally(() => {
     btn.disabled = false;
+    btn.classList.remove("loading");
     btn.innerText = "送出";
   });
 }
