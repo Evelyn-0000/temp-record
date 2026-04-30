@@ -13,39 +13,18 @@ table { width:100%; border-collapse: collapse; margin-top:10px;}
 td, th { border:1px solid #ccc; padding:8px; text-align:center;}
 
 button {
-  width:100%;
-  padding:12px;
-  margin-top:10px;
-  background:#4CAF50;
-  color:white;
-  border:none;
-  border-radius:8px;
-  font-size:16px;
+  width:100%; padding:12px; margin-top:10px;
+  background:#4CAF50; color:white; border:none;
+  border-radius:8px; font-size:16px;
   transition:0.2s;
 }
 
-/* 👉 按下效果 */
-button:active {
-  transform: scale(0.96);
-}
+button:active { transform: scale(0.96); }
+button.loading { background:#999; }
+button:disabled { opacity:0.6; }
 
-/* 👉 loading 狀態 */
-button.loading {
-  background:#999;
-}
-
-button:disabled {
-  opacity:0.6;
-}
-
-.checked {
-  background:#e8f5e9;
-}
-
-.unchecked {
-  background:#fff3e0;
-}
-
+.checked { background:#e8f5e9; }
+.unchecked { background:#fff3e0; }
 </style>
 </head>
 
@@ -64,20 +43,16 @@ button:disabled {
 
 <script>
 
-const API = "https://script.google.com/macros/s/AKfycbx7tJ5RAByNw7NNKQHGenFWp70maT_ZLQJKw_-FwPNMgHu7KkjJQ_SEnYe6_zSVKowatg/exec";
+const API = "https://script.google.com/macros/s/AKfycbzG-rsW9enCg1uOJwCardM9xyUQS2QbIUwEXj4ylV_D-xhKupgSpWmEstwo5lQsUHTBgg/exec";
 
-function getDevice(){
-  return new URLSearchParams(location.search).get("device");
-}
-
-const device = getDevice();
+const device = new URLSearchParams(location.search).get("device");
 document.getElementById("title").innerText = device + " 複核";
 
 let rows = [];
 
 // 🔵 載入資料
 fetch(API + "?action=get&device=" + device)
-.then(res => res.json())
+.then(r => r.json())
 .then(data => {
 
   rows = data;
@@ -91,15 +66,33 @@ fetch(API + "?action=get&device=" + device)
 
   data.forEach(d => {
 
-    let time = new Date(d.time);
-    let t = time.getHours().toString().padStart(2,'0') + ":" +
-            time.getMinutes().toString().padStart(2,'0');
+    // ⏰ 修正時間
+    let t = "";
+    if(d.time){
+      let time = new Date(d.time);
+      t = time.getHours().toString().padStart(2,'0') + ":" +
+          time.getMinutes().toString().padStart(2,'0');
+    }
 
+    // 📅 複核資訊
     let checkInfo = "未複核";
     let rowClass = "unchecked";
 
     if(d.checker){
-      checkInfo = `${d.checker}<br>${d.checkDate || ""} ${d.checkTime || ""}`;
+
+      let cd = d.checkDate ? new Date(d.checkDate) : null;
+      let ct = d.checkTime ? new Date(d.checkTime) : null;
+
+      let dateStr = cd ?
+        cd.getFullYear() + "/" +
+        (cd.getMonth()+1).toString().padStart(2,'0') + "/" +
+        cd.getDate().toString().padStart(2,'0') : "";
+
+      let timeStr = ct ?
+        ct.getHours().toString().padStart(2,'0') + ":" +
+        ct.getMinutes().toString().padStart(2,'0') : "";
+
+      checkInfo = `${d.checker}<br>${dateStr} ${timeStr}`;
       rowClass = "checked";
     }
 
@@ -114,16 +107,14 @@ fetch(API + "?action=get&device=" + device)
   });
 
   html += "</table>";
-
   document.getElementById("tableArea").innerHTML = html;
 });
 
 
-// 🔥 複核送出（升級版）
+// 🔥 複核送出
 async function submitCheck(){
 
   const btn = document.getElementById("btn");
-  const msg = document.getElementById("msg");
   const checker = document.getElementById("checker").value.trim();
 
   if(!checker){
@@ -131,50 +122,31 @@ async function submitCheck(){
     return;
   }
 
-  // 👉 UI 狀態
   btn.disabled = true;
   btn.classList.add("loading");
   btn.innerText = "送出中...";
-  msg.innerText = "";
 
-  try {
-
-    for (const r of rows) {
-
-      // 👉 只複核「未複核」資料
-      if(!r.checker){
-        await fetch(API, {
-          method: "POST",
-          body: new URLSearchParams({
-            action: "check",
-            device: device,
-            row: r.row,
-            checker: checker
-          })
-        });
-      }
+  for (const r of rows) {
+    if(!r.checker){
+      await fetch(API, {
+        method: "POST",
+        body: new URLSearchParams({
+          action: "check",
+          device: device,
+          row: r.row,
+          checker: checker
+        })
+      });
     }
-
-    msg.innerText = "✅ 複核完成";
-
-    // 🔥 1.5秒後自動關閉
-    setTimeout(() => {
-      window.close();
-
-      // 👉 如果瀏覽器不允許關閉
-      setTimeout(() => {
-        location.href = "about:blank";
-      }, 500);
-
-    }, 1500);
-
-  } catch(e){
-    msg.innerText = "❌ 失敗";
   }
 
-  btn.disabled = false;
-  btn.classList.remove("loading");
-  btn.innerText = "確認複核";
+  // ✅ 完成畫面（取代關閉）
+  document.body.innerHTML = `
+    <div style="text-align:center;padding:40px;">
+      <h2>✅ 複核完成</h2>
+      <p>可直接關閉此頁面</p>
+    </div>
+  `;
 }
 
 </script>
