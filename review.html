@@ -8,9 +8,44 @@
 <style>
 body { font-family: sans-serif; padding:20px; background:#f5f5f5;}
 .card { background:white; padding:20px; border-radius:12px;}
+
 table { width:100%; border-collapse: collapse; margin-top:10px;}
 td, th { border:1px solid #ccc; padding:8px; text-align:center;}
-button { width:100%; padding:12px; margin-top:10px; background:#4CAF50; color:white; border:none;}
+
+button {
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  background:#4CAF50;
+  color:white;
+  border:none;
+  border-radius:8px;
+  font-size:16px;
+  transition:0.2s;
+}
+
+/* 👉 按下效果 */
+button:active {
+  transform: scale(0.96);
+}
+
+/* 👉 loading 狀態 */
+button.loading {
+  background:#999;
+}
+
+button:disabled {
+  opacity:0.6;
+}
+
+.checked {
+  background:#e8f5e9;
+}
+
+.unchecked {
+  background:#fff3e0;
+}
+
 </style>
 </head>
 
@@ -22,7 +57,7 @@ button { width:100%; padding:12px; margin-top:10px; background:#4CAF50; color:wh
   <div id="tableArea">載入中...</div>
 
   <input id="checker" placeholder="請輸入複核者姓名">
-  <button onclick="submitCheck()">確認複核</button>
+  <button id="btn" onclick="submitCheck()">確認複核</button>
 
   <p id="msg"></p>
 </div>
@@ -31,7 +66,6 @@ button { width:100%; padding:12px; margin-top:10px; background:#4CAF50; color:wh
 
 const API = "https://script.google.com/macros/s/AKfycbx7tJ5RAByNw7NNKQHGenFWp70maT_ZLQJKw_-FwPNMgHu7KkjJQ_SEnYe6_zSVKowatg/exec";
 
-// 取得設備
 function getDevice(){
   return new URLSearchParams(location.search).get("device");
 }
@@ -41,7 +75,7 @@ document.getElementById("title").innerText = device + " 複核";
 
 let rows = [];
 
-// 🔥 讀取資料
+// 🔵 載入資料
 fetch(API + "?action=get&device=" + device)
 .then(res => res.json())
 .then(data => {
@@ -53,21 +87,29 @@ fetch(API + "?action=get&device=" + device)
     return;
   }
 
-  let html = "<table><tr><th>日期</th><th>時間</th><th>溫度</th><th>人員</th><th>備註</th></tr>";
+  let html = "<table><tr><th>日期</th><th>時間</th><th>溫度</th><th>人員</th><th>備註</th><th>複核</th></tr>";
 
   data.forEach(d => {
 
-    // 🔥 修正時間格式
     let time = new Date(d.time);
     let t = time.getHours().toString().padStart(2,'0') + ":" +
             time.getMinutes().toString().padStart(2,'0');
 
-    html += `<tr>
+    let checkInfo = "未複核";
+    let rowClass = "unchecked";
+
+    if(d.checker){
+      checkInfo = `${d.checker}<br>${d.checkDate || ""} ${d.checkTime || ""}`;
+      rowClass = "checked";
+    }
+
+    html += `<tr class="${rowClass}">
       <td>${d.date}</td>
       <td>${t}</td>
       <td>${d.temp}</td>
       <td>${d.name}</td>
       <td>${d.remark || ""}</td>
+      <td>${checkInfo}</td>
     </tr>`;
   });
 
@@ -77,29 +119,62 @@ fetch(API + "?action=get&device=" + device)
 });
 
 
-// 🔥 複核送出
+// 🔥 複核送出（升級版）
 async function submitCheck(){
 
-  const checker = document.getElementById("checker").value;
+  const btn = document.getElementById("btn");
+  const msg = document.getElementById("msg");
+  const checker = document.getElementById("checker").value.trim();
 
   if(!checker){
     alert("請輸入姓名");
     return;
   }
 
-  for (const r of rows) {
-    await fetch(API, {
-      method: "POST",
-      body: new URLSearchParams({
-        action: "check",
-        device: device,
-        row: r.row,
-        checker: checker
-      })
-    });
+  // 👉 UI 狀態
+  btn.disabled = true;
+  btn.classList.add("loading");
+  btn.innerText = "送出中...";
+  msg.innerText = "";
+
+  try {
+
+    for (const r of rows) {
+
+      // 👉 只複核「未複核」資料
+      if(!r.checker){
+        await fetch(API, {
+          method: "POST",
+          body: new URLSearchParams({
+            action: "check",
+            device: device,
+            row: r.row,
+            checker: checker
+          })
+        });
+      }
+    }
+
+    msg.innerText = "✅ 複核完成";
+
+    // 🔥 1.5秒後自動關閉
+    setTimeout(() => {
+      window.close();
+
+      // 👉 如果瀏覽器不允許關閉
+      setTimeout(() => {
+        location.href = "about:blank";
+      }, 500);
+
+    }, 1500);
+
+  } catch(e){
+    msg.innerText = "❌ 失敗";
   }
 
-  document.getElementById("msg").innerText = "✅ 複核完成";
+  btn.disabled = false;
+  btn.classList.remove("loading");
+  btn.innerText = "確認複核";
 }
 
 </script>
