@@ -29,6 +29,7 @@ h3 {
   color:white;
   padding:10px;
   border-radius:8px;
+  font-size:18px;
 }
 
 table {
@@ -76,6 +77,14 @@ button:disabled {
   background:#fff3e0;
 }
 
+/* 🔥 異常溫度 */
+.temp-danger {
+  color:red;
+  font-weight:bold;
+  font-size:16px;
+}
+
+/* 🔥 載入畫面 */
 .loading-screen {
   position: fixed;
   top:0;
@@ -110,7 +119,7 @@ input {
 
 <body>
 
-<!-- 載入畫面 -->
+<!-- 🔥 載入畫面 -->
 <div id="loading" class="loading-screen">
   載入中...
 </div>
@@ -135,12 +144,30 @@ input {
 
 const API = "https://script.google.com/macros/s/AKfycbzG-rsW9enCg1uOJwCardM9xyUQS2QbIUwEXj4ylV_D-xhKupgSpWmEstwo5lQsUHTBgg/exec";
 
-// 🔥 設備清單（1~15）
-const devices = [
-  "1","2","3","4","5",
-  "6","7","8","9","10",
-  "11","12","13","14","15"
-];
+
+// 🔥 設備名稱設定
+const deviceNames = {
+
+  "1":  "冷藏-咖啡機冰箱",
+  "2":  "冷藏-咖啡機下方",
+  "3":  "冷藏-牛奶冰箱",
+  "4":  "冷藏-小農商品",
+  "5":  "冷凍-前中島(右)",
+  "6":  "冷藏-蔬菜冰箱",
+  "7":  "冷凍-三門直立",
+  "8":  "冷凍-後中島(右)",
+  "9":  "冷藏-料理台下方",
+  "10": "冷藏-後場",
+  "11": "冷凍-後場",
+  "12": "冷凍-後中島(左)",
+  "13": "冷凍-後中島(前)",
+  "14": "冷凍-前中島(左)",
+  "15": "冷凍-前中島(前)"
+};
+
+
+// 🔥 設備清單
+const devices = Object.keys(deviceNames);
 
 let allRows = [];
 
@@ -168,7 +195,12 @@ async function loadAllDevices(){
         allRows.push(d);
       });
 
-      html += `<h3>設備 ${device}</h3>`;
+      // 🔥 顯示設備名稱
+      html += `
+        <h3>
+          設備${device} - ${deviceNames[device]}
+        </h3>
+      `;
 
       if(data.length === 0){
 
@@ -195,7 +227,7 @@ async function loadAllDevices(){
 
       data.forEach(d => {
 
-        // 時間格式
+        // 🔥 時間格式
         let t = "";
 
         if(d.time){
@@ -208,7 +240,29 @@ async function loadAllDevices(){
             time.getMinutes().toString().padStart(2,'0');
         }
 
-        // 複核資訊
+        // 🔥 溫度異常判斷
+        let tempClass = "";
+        let tempValue = d.temp;
+
+        const temp = parseFloat(d.temp);
+
+        // 冷藏 > 7
+        if(
+          deviceNames[device].includes("冷藏")
+          && temp > 7
+        ){
+          tempClass = "temp-danger";
+        }
+
+        // 冷凍 > -18
+        if(
+          deviceNames[device].includes("冷凍")
+          && temp > -18
+        ){
+          tempClass = "temp-danger";
+        }
+
+        // 🔥 複核資訊
         let checkInfo = "未複核";
         let rowClass = "unchecked";
 
@@ -247,7 +301,11 @@ async function loadAllDevices(){
         <tr class="${rowClass}">
           <td>${d.date}</td>
           <td>${t}</td>
-          <td>${d.temp}</td>
+
+          <td class="${tempClass}">
+            ${tempValue}°C
+          </td>
+
           <td>${d.name}</td>
           <td>${d.remark || ""}</td>
           <td>${checkInfo}</td>
@@ -260,7 +318,10 @@ async function loadAllDevices(){
     } catch(e){
 
       html += `
-        <h3>設備 ${device}</h3>
+        <h3>
+          設備${device} - ${deviceNames[device]}
+        </h3>
+
         <p>❌ 讀取失敗</p>
       `;
     }
@@ -268,7 +329,7 @@ async function loadAllDevices(){
 
   document.getElementById("tableArea").innerHTML = html;
 
-  // 顯示主畫面
+  // 🔥 顯示主畫面
   document.getElementById("loading").style.display = "none";
   document.getElementById("main").style.display = "block";
 }
@@ -308,7 +369,7 @@ async function submitCheck(){
       }
     }
 
-    // 完成畫面
+    // 🔥 完成畫面
     document.body.innerHTML = `
       <div style="
         display:flex;
